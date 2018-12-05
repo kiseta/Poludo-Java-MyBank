@@ -7,11 +7,13 @@ import java.util.Date;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import ca.poltech.mybank.account.Account;
-import ca.poltech.mybank.account.CheckingAccount;
-import ca.poltech.mybank.account.SavingsAccount;
+
 import ca.poltech.mybank.address.Address;
 import ca.poltech.mybank.customer.Customer;
+import ca.poltech.mybank.product.Product;
+import ca.poltech.mybank.product.account.Account;
+import ca.poltech.mybank.product.account.CheckingAccount;
+import ca.poltech.mybank.product.account.SavingsAccount;
 
 public class Utilities {
 	private static Pattern canadaZipCodePattern = Pattern.compile(Constants.CANADA_POSTAL_CODE_REGEX);
@@ -56,13 +58,25 @@ public class Utilities {
 		openingDate = dateFormatter.parse(dateString);
 
 		final double balance = Double.parseDouble(getUserInput("Please enter the initial balance:", scan, true, true));
-		final double limit = Double.parseDouble(getUserInput("Please enter the account limit:", scan, true, true));
 
+		Account account;
+
+		if (accountType.equalsIgnoreCase("c")) {
+			final double limit = Double.parseDouble(getUserInput("Please enter the account limit:", scan, true, true));
+			final double serviceFee = Double
+					.parseDouble(getUserInput("Please enter the service fee:", scan, true, true));
+			final double monthlyFee = Double
+					.parseDouble(getUserInput("Please enter the monthly fee:", scan, true, true));
+
+			account = new CheckingAccount(openingDate, balance, limit, serviceFee, monthlyFee);
+		} else {
+			final double interestRate = Double
+					.parseDouble(getUserInput("Please enter the interest rate:", scan, true, true));
+			final double interestInterval = Double
+					.parseDouble(getUserInput("Please enter the interest interva (in days):", scan, true, true));
+			account = new SavingsAccount(openingDate, balance, interestRate, interestInterval);
+		}
 		System.out.println("----------------------------------------------------------------\n");
-
-		// this does exactly the same as the if else case
-		Account account = accountType.equalsIgnoreCase("C") ? new CheckingAccount(openingDate, 0, limit, balance)
-				: new SavingsAccount(openingDate, 0, limit, balance);
 
 		return account;
 	}
@@ -84,9 +98,9 @@ public class Utilities {
 
 		final Address address = createAddressFromUserInput(scan);
 
-		final Account[] accounts = new Account[] {};
+		final Product[] products = new Product[] {};
 
-		Customer customer = new Customer(id, name, gender, birthDate, address, accounts);
+		Customer customer = new Customer(id, name, gender, birthDate, address, products);
 		String insertNewAccount;
 
 		do {
@@ -96,7 +110,7 @@ public class Utilities {
 			if (insertNewAccount.equals("no")) {
 				break;
 			} else if (insertNewAccount.equals("yes")) {
-				customer.addAccount(createAccountFromUserInput(scan));
+				customer.addProduct((Product)createAccountFromUserInput(scan));
 			}
 
 		} while (!insertNewAccount.equals("no"));
@@ -159,6 +173,19 @@ public class Utilities {
 		}
 		final Matcher matcher = datePattern.matcher(value);
 		return matcher.matches();
+	}
+
+	public static boolean transferMoney(Account src, Account destination, double value) {
+		// dont accept null destinations
+		if (destination == null) {
+			return false;
+		}
+		// first withdraw from my account and then send it to the destination
+		if (src.withdraw(value)) {
+			destination.deposit(value);
+			return true;
+		}
+		return false;
 	}
 
 }
