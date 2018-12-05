@@ -8,11 +8,12 @@ import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import ca.poltech.mybank.account.Account;
+import ca.poltech.mybank.account.CheckingAccount;
+import ca.poltech.mybank.account.SavingsAccount;
 import ca.poltech.mybank.address.Address;
 import ca.poltech.mybank.customer.Customer;
 
 public class Utilities {
-	
 	private static Pattern canadaZipCodePattern = Pattern.compile(Constants.CANADA_POSTAL_CODE_REGEX);
 	private static Pattern decimalNumberPattern = Pattern.compile(Constants.DECIMAL_NUMBER_REGEX);
 	private static Pattern datePattern = Pattern.compile(Constants.BIRTH_DATE_REGEX);
@@ -36,8 +37,11 @@ public class Utilities {
 		return myCalendar.getTime();
 	}
 
-	public static Account createAccountFromUserInput(final Scanner scan) {
+	public static Account createAccountFromUserInput(final Scanner scan) throws ParseException {
 		String accountType;
+		final Date openingDate;
+		String dateString = "";
+
 		System.out.println("----------------------ACCOUNT INFORMATION----------------------");
 
 		do {
@@ -45,12 +49,22 @@ public class Utilities {
 					false, false);
 		} while (!accountType.matches("C|S"));
 
+		do {
+			dateString = getUserInput("Please enter the opening date (dd/mm/yyyy):", scan, false, false);
+		} while (!validateDate(dateString));
+
+		openingDate = dateFormatter.parse(dateString);
+
 		final double balance = Double.parseDouble(getUserInput("Please enter the initial balance:", scan, true, true));
 		final double limit = Double.parseDouble(getUserInput("Please enter the account limit:", scan, true, true));
 
 		System.out.println("----------------------------------------------------------------\n");
-		
-		return new Account(accountType.equalsIgnoreCase("C") ? Account.CHECKING_ACCOUNT : Account.SAVINGS_ACCOUNT, balance, limit);
+
+		// this does exactly the same as the if else case
+		Account account = accountType.equalsIgnoreCase("C") ? new CheckingAccount(openingDate, 0, limit, balance)
+				: new SavingsAccount(openingDate, 0, limit, balance);
+
+		return account;
 	}
 
 	public static Customer createCustomerFromUserInput(final Scanner scan) throws ParseException {
@@ -103,9 +117,9 @@ public class Utilities {
 		final String city = getUserInput("Please enter the city:", scan, false, false);
 		final String province = getUserInput("Please enter the province:", scan, false, false);
 		final String country = getUserInput("Please enter the country:", scan, false, false);
-		
+
 		System.out.println("----------------------------------------------------------------\n");
-		
+
 		return new Address(zipCode, address, unitNumber, city, province, country);
 	}
 
@@ -134,6 +148,7 @@ public class Utilities {
 		if (null == value) {
 			return false;
 		}
+
 		final Matcher matcher = decimalNumberPattern.matcher(value);
 		return matcher.matches();
 	}
